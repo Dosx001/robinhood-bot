@@ -26,6 +26,21 @@ class stock:
             content += f"{position}: {self.positions[position]}\n"
         return content
 
+    def symbol(self):
+        return [symbol for symbol in self.positions]
+
+    def equity(self):
+        positions = rh.account.build_holdings()
+        return [(symbol, float(positions[symbol]['quantity'])) for symbol in self.positions if float(positions[symbol]['equity_change']) < 5 ]
+
+    def watchlist(self):
+        for i in rh.account.get_watchlist_by_name(info='results'):
+            print(i['symbol'])
+
+    def history(self):
+        for stock in self.positions:
+            print(rh.stocks.get_stock_historicals(stock, info='close_price'))
+
     def SMA(self, prices):
         total = 0
         for price in prices:
