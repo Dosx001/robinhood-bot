@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from urllib.request import urlopen
 import robin_stocks.robinhood as rh
 import pyotp
@@ -16,14 +16,14 @@ class stock:
                 instr = json.loads(response.read())
             content = {
                     'name': instr['simple_name'],
-                    'shares': position['quantity']
+                    'shares': float(position['quantity'])
                     }
             self.positions.update({instr['symbol']: content})
 
     def __repr__(self):
         content = ""
-        for position in self.positions:
-            content += f"{position}: {self.positions[position]}\n"
+        for symbol in self.positions:
+            content += f"{symbol}: {self.positions[symbol]}\n"
         return content
 
     def symbol(self):
@@ -34,22 +34,32 @@ class stock:
         return [(symbol, float(positions[symbol]['quantity'])) for symbol in self.positions if float(positions[symbol]['equity_change']) < 5 ]
 
     def watchlist(self):
-        for i in rh.account.get_watchlist_by_name(info='results'):
-            print(i['symbol'])
+        return [stock['symbol'] for stock in rh.account.get_watchlist_by_name(info='results') if not stock['symbol'] in self.positions]
 
-    def history(self):
-        for stock in self.positions:
-            print(rh.stocks.get_stock_historicals(stock, info='close_price'))
+    def sell(self, symbol):
+        quantity = self.positions.pop(symbol)['quantity']
+        return rh.orders.order_sell_fractional_by_quantity(symbol, quantity)
+
+    def buy(self, symbol):
+        info = rh.orders.order_buy_fractional_by_price(symbol, MONEY)
+        self.positions.update({symbol: {'name': None, 'shares': None}})
+        return info
+
+    def cash(self):
+        return float(rh.profiles.load_account_profile('buying_power'))
+
+    def history(self, symbol):
+        return rh.stocks.get_stock_historicals(symbol, '5minute', 'week', info='close_price')
 
     def SMA(self, prices):
         total = 0
         for price in prices:
-            total += price
+            total += float(price)
         return total / len(prices)
 
     def EMA(self, prices):
-        ema = SMA(prices[0:10])
+        ema = self.SMA(prices[0:10])
         c = 2 / (1 + len(prices[10:-1]))
         for price in prices[10:-1]:
-            ema = price * c + ema * (1 - c)
+            ema = float(price) * c + ema * (1 - c)
         return ema
